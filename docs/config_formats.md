@@ -6,14 +6,9 @@ Các file cấu hình được tạo theo đúng thư mục sau:
 - `configs/train/`: cấu hình DQN/PPO và ngân sách huấn luyện.
 - `configs/evaluation/`: cấu hình validation/benchmark.
 
-Đọc YAML bằng `yaml.safe_load`, kiểm tra các trường bắt buộc trước khi truyền
-tham số con vào `make_env.py`, `train_dqn.py`, `train_ppo.py` hoặc
-`evaluate_benchmark.py`. Không truyền toàn bộ YAML mapping trực tiếp vào
-constructor của SB3. Đường dẫn trong YAML là đường dẫn tương đối từ thư mục
-gốc repository và phải dùng dấu `/`.
+Đọc YAML bằng `yaml.safe_load`, kiểm tra các trường bắt buộc trước khi truyền tham số con vào `make_env.py`, `train_dqn.py`, `train_ppo.py` hoặc `evaluate_benchmark.py`. Không truyền toàn bộ YAML mapping trực tiếp vào constructor của SB3. Đường dẫn trong YAML là đường dẫn tương đối từ thư mục gốc repository và phải dùng dấu `/`.
 
-Bản đầy đủ về nơi tạo file, file nào đọc chúng, và format đầu vào/đầu ra nằm ở
-[`interfaces_and_formats.md`](interfaces_and_formats.md).
+Bản đầy đủ về nơi tạo file, file nào đọc chúng, và format đầu vào/đầu ra nằm ở [`interfaces_and_formats.md`](interfaces_and_formats.md).
 
 # 1. Training config
 
