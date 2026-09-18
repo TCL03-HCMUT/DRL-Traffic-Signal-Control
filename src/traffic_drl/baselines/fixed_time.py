@@ -47,52 +47,30 @@ class FixedTimeController:
         *,
         deterministic: bool = True,
     ) -> int:
-        """Return the identity (no-switch) action for the current phase.
-
-        Under ``fixed_ts=True`` SUMO-RL ignores the agent action and advances
-        the pre-programmed signal plan automatically.  This method exists only
-        to satisfy the :class:`~traffic_drl.contracts.Controller` interface so
-        that the unified evaluation loop can treat fixed-time like any other
-        controller.
-
-        Args:
-            observation: Current observation vector (ignored).
-            deterministic: Unused; kept for interface compatibility.
-
-        TODO (SV3): verify the correct identity action value for the
-        single-intersection environment.
-
-        Returns:
-            int: The identity action (phase hold); value is environment-specific.
-        """
-        raise NotImplementedError
+        """Return the identity (no-switch) action for the current phase."""
+        return 0
 
     def reset(self) -> None:
-        """No internal state to reset for fixed-time control.
-
-        Returns:
-            None.
-        """
-        # Fixed-time has no learned or accumulated state.
+        """No internal state to reset for fixed-time control."""
         pass
 
 
-def make_fixed_time_env(record: ScenarioRecord, config: EnvConfig) -> gym.Env:
-    """Create a SUMO-RL environment configured for fixed-time control.
-
-    Passes ``fixed_ts=True`` to the SUMO-RL constructor so that SUMO executes
-    the pre-programmed signal plan from the network/additional files.  The
-    route file and seeds are taken from *record* to ensure the same traffic
-    demand is used across all baselines.
-
-    Args:
-        record: Scenario record providing the route file and seeds.
-        config: Shared environment configuration (network, timing, SUMO options).
-
-    TODO (SV3): map ``config`` fields to the SUMO-RL constructor and confirm
-    that ``fixed_ts=True`` disables agent control correctly.
-
-    Returns:
-        gym.Env: A Gymnasium-compatible SUMO-RL environment in fixed-time mode.
-    """
-    raise NotImplementedError
+def make_fixed_time_env(
+    record: ScenarioRecord, 
+    config: EnvConfig,
+    run_id: str = "baseline_fixed_time",
+    base_dir: str | Path = "outputs/runs",
+) -> gym.Env:
+    """Create a SUMO-RL environment configured for fixed-time control."""
+    from traffic_drl.environment.make_env import create_sumo_env
+    from pathlib import Path
+    
+    return create_sumo_env(
+        config=config,
+        route_file=record.route_file,
+        run_id=run_id,
+        base_dir=Path(base_dir),
+        fixed_ts=True,
+        seed=record.sumo_seed,
+        wrap=True,
+    )
