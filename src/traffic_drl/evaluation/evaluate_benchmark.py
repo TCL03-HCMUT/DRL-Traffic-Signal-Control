@@ -59,30 +59,41 @@ def evaluate_controller(
 ) -> list[EpisodeMetrics]:
     """Roll out one controller and collect standard traffic metrics."""
     results: list[EpisodeMetrics] = []
+    
+    is_vec = hasattr(env, "env_method")
 
     for ep in range(episodes):
         if hasattr(controller, "reset") and callable(controller.reset):
             controller.reset()
             
-        obs, info = env.reset(seed=seed)
+        if is_vec:
+            env.seed(seed)
+            obs = env.reset()
+            info = {}
+        else:
+            obs, info = env.reset(seed=seed)
+            
         terminated = False
         truncated = False
         step_count = 0
         
         while not (terminated or truncated):
-            if hasattr(controller, "predict"):
-                action, _ = controller.predict(obs, deterministic=deterministic)
-            elif hasattr(controller, "step"):
-                action = controller.step(obs)
-            else:
-                action = env.action_space.sample()
+            action = controller.predict(obs, deterministic=deterministic)
+            if isinstance(action, tuple):
+                action = action[0]
                 
-            step_ret = env.step(action)
-            if len(step_ret) == 5:
-                obs, reward, terminated, truncated, info = step_ret
+            if is_vec:
+                obs, reward, dones, infos = env.step(action)
+                terminated = dones[0]
+                truncated = infos[0].get("TimeLimit.truncated", False)
+                info = infos[0]
             else:
-                obs, reward, terminated, info = step_ret
-                truncated = False
+                step_ret = env.step(action)
+                if len(step_ret) == 5:
+                    obs, reward, terminated, truncated, info = step_ret
+                else:
+                    obs, reward, terminated, info = step_ret
+                    truncated = False
                 
             step_count += 1
             

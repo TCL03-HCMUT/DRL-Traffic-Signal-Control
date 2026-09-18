@@ -1,0 +1,36 @@
+experiment:
+  name: dummy_dqn
+  seed: 5
+  device: cpu
+  split_allowed: TR
+
+environment:
+  env_config_path: configs/environment/dev_single_intersection.yaml
+  manifest_path: scenarios/scenario_manifest.csv
+
+reward:
+  # Changed from 'combined' to 'pressure' for the dummy network.
+  type: pressure
+  params: {}
+  wrappers: {}
+
+normalization:
+  norm_obs: true
+  norm_reward: true
+  clip_obs: 1.0
+  clip_reward: 10.0
+
+model_hyperparameters:
+  policy: MlpPolicy
+  learning_rate: 0.0001
+  batch_size: 32
+  buffer_size: 10000
+  learning_starts: 100
+  gamma: 0.99
+  verbose: 1
+
+training_control:
+  total_timesteps: 10000
+  save_freq: 1000
+  eval_freq: 0
+  log_csv: true
