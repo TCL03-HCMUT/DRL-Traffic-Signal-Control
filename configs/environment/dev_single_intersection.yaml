@@ -1,10 +1,9 @@
 network:
-  net_file: sumo/net/<network>.net.xml
+  net_file: sumo/net/dummy/single-intersection.net.xml
   route_files: []
-  additional_files:
-    - sumo/additional/<vehicle_types>.add.xml
+  additional_files: []
 traffic_light:
-  ts_id: <validated_tls_id>
+  ts_id: "t"
   single_agent: true
   # SUMO tlLogic programID to activate.
   # null → use the first program SUMO loads (default sumo-rl behaviour).

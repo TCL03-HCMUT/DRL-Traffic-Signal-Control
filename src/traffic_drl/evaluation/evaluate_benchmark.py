@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import asdict, fields
 from pathlib import Path
 from typing import Iterable
 
@@ -56,37 +57,50 @@ def evaluate_controller(
     deterministic: bool = True,
     episodes: int = 1,
 ) -> list[EpisodeMetrics]:
-    """Roll out one controller and collect standard traffic metrics.
-
-    This function is the single evaluation loop used by **all** controllers:
-    fixed-time, actuated, max-pressure, and DRL.
-
-    Args:
-        controller: Any object satisfying the
-            :class:`~traffic_drl.contracts.Controller` protocol.
-        env: A fully configured Gymnasium environment for this scenario/seed,
-            with the same observation normalisation used during training (for
-            DRL) or no normalisation (for heuristic baselines).
-        controller_name: Label written to every returned metric record.
-        scenario_id: Manifest ID for the route under evaluation.
-        seed: Evaluation seed; used to reset the environment reproducibly.
-        deterministic: Disable policy exploration during inference.
-        episodes: Number of repeated episodes for this scenario/seed.
-        tripinfo_path: Optional path to SUMO tripinfo.xml file.
-
-    TODO (SV3): implement the reset → predict → step loop; read metrics from
-    the ``info`` dict populated by
-    :class:`~traffic_drl.environment.wrappers.MetricsInfoWrapper`; measure
-    inference latency per step.
-
-    Returns:
-        list[EpisodeMetrics]: One typed result per completed episode.
-    """
+    """Roll out one controller and collect standard traffic metrics."""
     results: list[EpisodeMetrics] = []
 
     for ep in range(episodes):
-        if hasattr(model, "reset") and callable(model.reset):
-            model.reset()
+        if hasattr(controller, "reset") and callable(controller.reset):
+            controller.reset()
+            
+        obs, info = env.reset(seed=seed)
+        terminated = False
+        truncated = False
+        step_count = 0
+        
+        while not (terminated or truncated):
+            if hasattr(controller, "predict"):
+                action, _ = controller.predict(obs, deterministic=deterministic)
+            elif hasattr(controller, "step"):
+                action = controller.step(obs)
+            else:
+                action = env.action_space.sample()
+                
+            step_ret = env.step(action)
+            if len(step_ret) == 5:
+                obs, reward, terminated, truncated, info = step_ret
+            else:
+                obs, reward, terminated, info = step_ret
+                truncated = False
+                
+            step_count += 1
+            
+        results.append(
+            EpisodeMetrics(
+                controller=controller_name,
+                scenario_id=scenario_id,
+                seed=seed,
+                average_waiting_time=float(info.get("average_waiting_time", 0.0)),
+                average_queue_length=float(info.get("average_queue_length", 0.0)),
+                time_loss=float(info.get("time_loss", 0.0)),
+                throughput=float(info.get("throughput", 0.0)),
+                phase_switch_rate=float(info.get("phase_switch_rate", 0.0)),
+                min_green_violations=int(info.get("min_green_violations", 0)),
+            )
+        )
+        
+    return results
 
 def evaluate_manifest(
     controller: Controller,
@@ -98,33 +112,9 @@ def evaluate_manifest(
     controller_name: str,
     deterministic: bool = True,
     episodes_per_scenario: int = 1,
+    allow_te: bool = False,
 ) -> list[EpisodeMetrics]:
-    """Evaluate every scenario in *split* with each seed in *seeds*.
-
-    For each (scenario, seed) pair the factory creates a fresh environment,
-    then :func:`evaluate_controller` runs *episodes_per_scenario* episodes.
-
-    Args:
-        controller: Controller satisfying the
-            :class:`~traffic_drl.contracts.Controller` protocol.
-        env_factory: Factory satisfying the
-            :class:`~traffic_drl.contracts.EnvironmentFactory` protocol; creates
-            one fresh environment per (scenario, seed) pair.
-        manifest: Scenario source satisfying the
-            :class:`~traffic_drl.contracts.ScenarioSource` protocol.
-        split: ``VA`` for model selection, or unlocked ``TE`` for final
-            evaluation.
-        seeds: Seeds shared across all controllers for a fair comparison.
-        controller_name: Label for the output records.
-        deterministic: Whether policy exploration is disabled.
-        episodes_per_scenario: Episode repetitions per (scenario, seed) pair.
-
-    TODO (SV3): prevent TE evaluation before the model and manifest are frozen;
-    close the environment after each (scenario, seed) pair.
-
-    Returns:
-        list[EpisodeMetrics]: All results across every scenario, seed, and episode.
-    """
+    """Evaluate every scenario in *split* with each seed in *seeds*."""
     normalized_split = split.strip().upper()
     if normalized_split == "TE" and not allow_te:
         raise PermissionError(
@@ -140,7 +130,7 @@ def evaluate_manifest(
             env = env_factory(record, seed)
             try:
                 metrics = evaluate_controller(
-                    model,
+                    controller,
                     env,
                     controller_name=controller_name,
                     scenario_id=record.scenario_id,

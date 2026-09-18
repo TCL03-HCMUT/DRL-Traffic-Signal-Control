@@ -1,0 +1,6 @@
+scenario_id,split,route_file,demand_seed,sumo_seed,num_seconds
+DEV-00,TR,scenarios/dummy/single-intersection-vhvh.rou.xml,42,42,900
+test_scenario,TR,scenarios/dummy/single-intersection-vhvh.rou.xml,42,42,900
+tr_01,TR,scenarios/dummy/single-intersection-vhvh.rou.xml,1,1,900
+VA-01,VA,scenarios/dummy/single-intersection-vhvh.rou.xml,101,101,900
+VA-02,VA,scenarios/dummy/single-intersection-vhvh.rou.xml,102,102,900
