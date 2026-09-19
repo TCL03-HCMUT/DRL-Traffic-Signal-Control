@@ -1,0 +1,36 @@
+experiment:
+  seed: 42
+  tracking: false
+
+environment:
+  env_config_path: configs/environment/dev_single_intersection.yaml
+  manifest_path: scenarios/pilot_scenario_manifest.csv
+
+reward:
+  type: pressure
+  params: {}
+  wrappers: {}
+
+normalization:
+  norm_obs: true
+  norm_reward: true
+  clip_obs: 1.0
+  clip_reward: 10.0
+
+model_hyperparameters:
+  policy: MlpPolicy
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  verbose: 1
+
+training_control:
+  total_timesteps: 10000
+  save_freq: 1000
+  eval_freq: 0
+  log_csv: true

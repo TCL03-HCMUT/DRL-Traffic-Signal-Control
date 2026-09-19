@@ -39,13 +39,21 @@ def build_ppo_model(
             provided.
         tensorboard_log: Optional TensorBoard log directory.
 
-    TODO (SV2): map ``config.model_hyperparameters`` to the SB3 PPO constructor;
-    keep PPO secondary to the minimum DQN deliverable.
-
     Returns:
         PPO: An initialised SB3 PPO model.
     """
-    raise NotImplementedError
+    from stable_baselines3 import PPO
+
+    kwargs = dict(config.model_hyperparameters)
+    policy = kwargs.pop("policy", "MlpPolicy")
+
+    return PPO(
+        policy=policy,
+        env=env,
+        seed=seed if seed is not None else config.experiment.seed,
+        tensorboard_log=str(tensorboard_log) if tensorboard_log else None,
+        **kwargs,
+    )
 
 
 def train_ppo(
@@ -63,12 +71,15 @@ def train_ppo(
         callback: Optional SB3 callback.
         reset_num_timesteps: ``True`` for a fresh run; ``False`` when resuming.
 
-    TODO (SV2): call ``model.learn(...)`` and return the trained model.
-
     Returns:
         PPO: The trained (or partially trained) PPO model.
     """
-    raise NotImplementedError
+    model.learn(
+        total_timesteps=total_timesteps,
+        callback=callback,
+        reset_num_timesteps=reset_num_timesteps,
+    )
+    return model
 
 
 def save_ppo_checkpoint(
@@ -105,3 +116,65 @@ def load_ppo_checkpoint(
         training=training,
         restore_rng_state=restore_rng_state,
     )
+
+
+def run_ppo_pilot(
+    config: TrainConfig | str | Path = "configs/train/ppo_dummy.yaml",
+    *,
+    checkpoint_dir: str | Path,
+    total_timesteps: int = 10_000,
+    seed: int = 5,
+) -> "PPO":
+    """Run the DEV-00 pilot training with PPO."""
+    if isinstance(config, (str, Path)):
+        config = load_train_config(config)
+
+    from traffic_drl.environment.make_env import make_dev_environment, make_vectorized_environment, build_reward_fn
+    from traffic_drl.environment.scenario_factory import ScenarioManifest
+    from traffic_drl.train.callbacks import RobustCheckpointCallback
+    from traffic_drl.evaluation.test import check_environment, run_smoke_test
+
+    # 1. Smoke test the DEV environment
+    dev_env = make_dev_environment(config.environment.env_config_path, seed=seed)
+    check_environment(dev_env)
+    run_smoke_test(dev_env, steps=10, seed=seed)
+
+    # 2. Set up the vectorized environment
+    manifest = ScenarioManifest.from_csv(config.environment.manifest_path)
+    record = manifest.get("DEV-00")
+    
+    vec_env = make_vectorized_environment(
+        config=config.environment.env_config_path,
+        route_file=record.route_file,
+        run_id="pilot_ppo",
+        base_dir=Path("outputs/runs"),
+        seed=seed,
+        custom_observation=False,
+        reward_fn=build_reward_fn(config.reward),
+        norm_obs=config.normalisation.norm_obs,
+        norm_reward=config.normalisation.norm_reward,
+        clip_obs=config.normalisation.clip_obs,
+        clip_reward=config.normalisation.clip_reward,
+    )
+
+    # 3. Build model
+    model = build_ppo_model(vec_env, config, seed=seed, tensorboard_log=checkpoint_dir)
+
+    # 4. Train
+    callback = RobustCheckpointCallback(
+        save_freq=config.training_control.save_freq,
+        save_dir=checkpoint_dir,
+        save_replay_buffer=False, # PPO has no replay buffer
+        save_vec_normalize=True,
+    )
+    
+    model = train_ppo(
+        model, 
+        total_timesteps=total_timesteps, 
+        callback=callback
+    )
+
+    if hasattr(vec_env, "close") and callable(vec_env.close):
+        vec_env.close()
+
+    return model
