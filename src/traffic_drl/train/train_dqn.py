@@ -73,39 +73,38 @@ def train_dqn(
 
 def save_dqn_checkpoint(
     model: "DQN",
-    path: str | Path,
+    bundle_dir: str | Path,
     *,
-    replay_buffer_path: str | Path | None = None,
     vec_normalize_env: "VecNormalize | None" = None,
-    resume_info: dict[str, str | int | float | bool] | None = None,
+    save_replay_buffer: bool = True,
+    resume_info: "ResumeInfo | None" = None,
 ) -> None:
-    """Save model, replay buffer, normalisation stats, and resume metadata."""
+    """Save DQN model, replay buffer, normalisation stats, and resume metadata."""
     save_checkpoint(
         model,
-        path,
+        bundle_dir,
         vec_normalize_env=vec_normalize_env,
-        save_replay_buffer=replay_buffer_path is not None,
-        replay_buffer_path=replay_buffer_path,
+        save_replay_buffer=save_replay_buffer,
         resume_info=resume_info,
     )
 
 
 def load_dqn_checkpoint(
-    path: str | Path,
+    bundle_dir: str | Path,
     *,
     env: "DummyVecEnv | VecNormalize | None" = None,
-    replay_buffer_path: str | Path | None = None,
-    vec_normalize_stats: str | Path | None = None,
+    training: bool = True,
+    restore_rng_state: bool = True,
 ) -> "DQN":
-    """Load a DQN checkpoint and optional training state."""
+    """Load a DQN checkpoint with auto-detected replay buffer and VecNormalize."""
     from stable_baselines3 import DQN as _DQN
 
     return load_checkpoint(
         _DQN,
-        path,
+        bundle_dir,
         env=env,
-        vec_normalize_path=vec_normalize_stats,
-        replay_buffer_path=replay_buffer_path,
+        training=training,
+        restore_rng_state=restore_rng_state,
     )
 
 
@@ -122,7 +121,7 @@ def run_dqn_pilot(
 
     from traffic_drl.environment.make_env import make_dev_environment, make_vectorized_environment, build_reward_fn
     from traffic_drl.environment.scenario_factory import ScenarioManifest
-    from traffic_drl.train.callbacks import Phase1PilotCallback
+    from traffic_drl.train.callbacks import RobustCheckpointCallback
     from traffic_drl.evaluation.test import check_environment, run_smoke_test
 
     # 1. Smoke test the DEV environment to verify contract
@@ -140,6 +139,7 @@ def run_dqn_pilot(
         run_id="pilot_dqn",
         base_dir=Path("outputs/runs"),
         seed=seed,
+        custom_observation=False,
         reward_fn=build_reward_fn(config.reward),
         norm_obs=config.normalisation.norm_obs,
         norm_reward=config.normalisation.norm_reward,
@@ -151,7 +151,7 @@ def run_dqn_pilot(
     model = build_dqn_model(vec_env, config, seed=seed, tensorboard_log=checkpoint_dir)
 
     # 4. Train
-    callback = Phase1PilotCallback(
+    callback = RobustCheckpointCallback(
         save_freq=config.training_control.save_freq,
         save_dir=checkpoint_dir,
         save_replay_buffer=True,

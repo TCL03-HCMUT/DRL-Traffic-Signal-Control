@@ -73,48 +73,35 @@ def train_ppo(
 
 def save_ppo_checkpoint(
     model: "PPO",
-    path: str | Path,
+    bundle_dir: str | Path,
     *,
     vec_normalize_env: "VecNormalize | None" = None,
-    resume_info: dict[str, str | int | float | bool] | None = None,
+    resume_info: "ResumeInfo | None" = None,
 ) -> None:
-    """Save PPO and all artifacts required for resuming.
-
-    Args:
-        model: Trained SB3 PPO instance.
-        path: Base ``.zip`` checkpoint file.
-        vec_normalize_env: ``VecNormalize`` wrapper to save.
-        resume_info: Optional metadata dict written as sibling JSON.
-
-    Returns:
-        None.
-    """
+    """Save PPO model and all artifacts required for resuming."""
     save_checkpoint(
         model,
-        path,
+        bundle_dir,
         vec_normalize_env=vec_normalize_env,
+        save_replay_buffer=False,  # PPO has no replay buffer
         resume_info=resume_info,
     )
 
 
 def load_ppo_checkpoint(
-    path: str | Path,
+    bundle_dir: str | Path,
     *,
     env: "DummyVecEnv | VecNormalize | None" = None,
-    vec_normalize_stats: str | Path | None = None,
+    training: bool = True,
+    restore_rng_state: bool = True,
 ) -> "PPO":
-    """Load a PPO checkpoint with optional normalisation statistics.
-
-    Args:
-        path: Existing SB3 PPO ``.zip`` checkpoint.
-        env: Fresh compatible environment; required when loading normalisation
-            statistics.
-        vec_normalize_stats: Saved ``VecNormalize`` ``.pkl`` to restore before
-            the model.
-
-    Returns:
-        PPO: A loaded SB3 PPO model ready for inference or continued training.
-    """
+    """Load a PPO checkpoint with auto-detected VecNormalize."""
     from stable_baselines3 import PPO as _PPO
 
-    return load_checkpoint(_PPO, path, env=env, vec_normalize_path=vec_normalize_stats)
+    return load_checkpoint(
+        _PPO,
+        bundle_dir,
+        env=env,
+        training=training,
+        restore_rng_state=restore_rng_state,
+    )
