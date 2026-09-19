@@ -253,7 +253,7 @@ def make_dev_environment(
     from traffic_drl.environment.scenario_factory import ScenarioManifest
     
     # Load the DEV-00 manifest record for the smoke test
-    manifest = ScenarioManifest.from_csv("scenarios/scenario_manifest.csv")
+    manifest = ScenarioManifest.from_csv("scenarios/pilot_scenario_manifest.csv")
     record = manifest.get("DEV-00")
 
     env = create_sumo_env(
