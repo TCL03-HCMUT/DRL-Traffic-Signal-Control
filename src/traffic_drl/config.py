@@ -333,7 +333,7 @@ def load_env_config(
             min_green=int(timing["min_green"]),
             max_green=int(timing["max_green"]),
             yellow_time=int(timing["yellow_time"]),
-            red_time=int(timing.get("red_time", 2)),
+            red_time=int(timing.get("red_time", 0)),
         ),
         sumo_options=SumoOptions(
             use_gui=bool(sumo["use_gui"]),

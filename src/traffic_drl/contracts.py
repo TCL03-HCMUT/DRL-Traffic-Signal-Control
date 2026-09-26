@@ -102,28 +102,6 @@ class EpisodeMetrics:
 
 
 @dataclass(frozen=True)
-class StepMetrics:
-    """Traffic metrics captured at a single simulation time step.
-
-    Used for detailed time-series inspection of queue dissipation, delay
-    accumulation, and agent action evolution across simulation seconds.
-    """
-
-    step: float
-    controller: str
-    scenario_id: str
-    seed: int
-    episode: int
-    queue_length: float
-    waiting_time: float
-    accumulated_waiting_time: float
-    mean_speed: float
-    reward: float
-    cumulative_reward: float
-    action: int | None = None
-
-
-@dataclass(frozen=True)
 class MetricSummary:
     """Aggregated metric values for one controller/scenario group.
 
@@ -193,16 +171,13 @@ class SmokeTestResult:
     last_info: dict[str, str | int | float | bool]
 
 
-@dataclass(frozen=True)
+@dataclass
 class ResumeInfo:
     """Metadata required to resume a training run reproducibly.
 
     Created and written to JSON by
     :func:`~traffic_drl.train.checkpointing.save_checkpoint`.
     Loaded by :func:`~traffic_drl.train.checkpointing.read_resume_info`.
-
-    TODO (SV2): record the exact config, commit, seed, split, and timestep at
-    every checkpoint.
     """
 
     num_timesteps: int
@@ -211,6 +186,8 @@ class ResumeInfo:
     scenario_split: str | None = None
     config_path: Path | None = None
     git_commit: str | None = None
+    best_metric_value: float | None = None
+    best_metric_name: str | None = None
     extra: dict[str, str | int | float | bool] = field(default_factory=dict)
 
 

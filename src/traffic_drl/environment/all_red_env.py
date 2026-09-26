@@ -56,7 +56,7 @@ class AllRedSumoEnvironment(SumoEnvironment):
     AllRedObservationFunction so the min_green flag accounts for red_time.
     """
 
-    def __init__(self, *args, red_time: int = 2, program_id: Optional[Union[str, Dict[str, str]]] = None, **kwargs):
+    def __init__(self, *args, red_time: int = 0, program_id: Optional[Union[str, Dict[str, str]]] = None, **kwargs):
         self.red_time = red_time
         self.program_id = program_id
         kwargs.setdefault("observation_class", AllRedObservationFunction)
