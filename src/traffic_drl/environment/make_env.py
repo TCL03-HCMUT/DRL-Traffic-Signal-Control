@@ -36,6 +36,7 @@ from traffic_drl.environment.custom_rewards import CombinedReward
 from traffic_drl.train.scenario_sampler import ScenarioSampler
 import traffic_drl.run_id as r_id
 from traffic_drl.environment.all_red_env import AllRedSumoEnvironment
+from stable_baselines3.common.monitor import Monitor
 
 # Type aliases for SB3 vectorised environments.  We use strings here so the
 # module can be imported even when stable-baselines3 is not installed.
@@ -190,9 +191,22 @@ def create_sumo_env(
 
     cmds = " ".join(additional_cmd)
     
+    import os
+    
+    # Use relative paths to avoid Windows Unicode path encoding issues with SUMO C++ binaries
+    try:
+        rel_net_file = os.path.relpath(config.network.net_file, start=os.getcwd())
+    except ValueError:
+        rel_net_file = str(config.network.net_file)
+        
+    try:
+        rel_route_file = os.path.relpath(route_file, start=os.getcwd())
+    except ValueError:
+        rel_route_file = str(route_file)
+
     env_kwargs = dict(
-        net_file=config.network.net_file,
-        route_file=str(route_file),
+        net_file=rel_net_file,
+        route_file=rel_route_file,
         out_csv_name=str(results_dir / "run_csv"),
         use_gui=use_gui,
         num_seconds=config.timing.num_seconds,
@@ -338,7 +352,7 @@ def make_vectorized_environment(
         config = load_env_config(config)
 
     def _make_env():
-        return create_sumo_env(
+        env = create_sumo_env(
             config,
             route_file,
             run_id=run_id,
@@ -355,6 +369,8 @@ def make_vectorized_environment(
             vehicle_classes=vehicle_classes,
             **kwargs,
         )
+        env = Monitor(env)
+        return env
 
     env = DummyVecEnv([_make_env])
 
