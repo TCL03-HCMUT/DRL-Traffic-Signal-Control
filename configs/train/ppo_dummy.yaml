@@ -1,6 +1,8 @@
 experiment:
+  name: dummy_ppo
   seed: 42
-  tracking: false
+  device: cpu
+  split_allowed: TR
 
 environment:
   env_config_path: configs/environment/dev_single_intersection.yaml
