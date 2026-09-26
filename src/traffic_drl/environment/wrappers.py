@@ -69,8 +69,8 @@ class MultiScenarioWrapper(gym.Wrapper):
         
         # SUMO-RL uses route_file internally, we also set it directly on the unwrapped env
         # just in case options are not properly propagated by all wrapper layers.
-        if hasattr(self.unwrapped, "route_file"):
-            self.unwrapped.route_file = str(self.active_scenario.route_file)
+        if hasattr(self.unwrapped, "_route"):
+            self.unwrapped._route = str(self.active_scenario.route_file)
             
         obs, info = super().reset(seed=seed, options=options)
         info["scenario"] = self.active_scenario
@@ -118,10 +118,7 @@ class MetricsInfoWrapper(gym.Wrapper):
         """Reset the environment and clear accumulated metric state."""
 
         self._step_count = 0
-        self._total_wait_time = 0.0
         self._total_queue_length = 0.0
-        self._total_time_loss = 0.0
-        self._total_arrived = 0.0
         self._phase_switches = 0
         self._min_green_violations = 0
         self._last_phase = {}
@@ -138,26 +135,10 @@ class MetricsInfoWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = super().step(action)
         self._step_count += 1
         
-        if hasattr(self.unwrapped, "sumo"):
-            self._total_arrived += self.unwrapped.sumo.simulation.getArrivedNumber()
-        
-        # Accumulate metrics from all traffic signals
+        # Accumulate metrics from all traffic signals for phase switching
         signals = getattr(self.unwrapped, "traffic_signals", {})
         
-        current_wait = 0.0
-        current_queue = 0.0
-        current_time_loss = 0.0
-        
         for ts_id, ts in signals.items():
-            # Queue length: sum of halting vehicles across all lanes
-            for lane in ts.lanes:
-                current_queue += ts.sumo.lane.getLastStepHaltingNumber(lane)
-                
-                # Waiting time and Time loss
-                for veh in ts.sumo.lane.getLastStepVehicleIDs(lane):
-                    current_wait += ts.sumo.vehicle.getAccumulatedWaitingTime(veh)
-                    current_time_loss += ts.sumo.vehicle.getTimeLoss(veh)
-                    
             # Phase Tracking
             current_phase = getattr(ts, "green_phase", None)
             if current_phase is not None:
@@ -174,18 +155,16 @@ class MetricsInfoWrapper(gym.Wrapper):
                 else:
                     self._time_in_phase[ts_id] += getattr(ts, "delta_time", 1)
                 
-        self._total_wait_time += current_wait
-        self._total_queue_length += current_queue
-        self._total_time_loss += current_time_loss
+        self._total_queue_length += info.get("system_total_stopped", 0.0)
         
         if terminated or truncated:
             # Averages over the episode length
-            info["average_waiting_time"] = self._total_wait_time / max(1, self._step_count)
+            info["average_waiting_time"] = info.get("system_mean_waiting_time", 0.0)
             info["average_queue_length"] = self._total_queue_length / max(1, self._step_count)
-            info["time_loss"] = self._total_time_loss / max(1, self._step_count)
+            # Use sumo-rl's internal variables for accurate throughput that isn't dropped between delta_time steps
+            info["throughput"] = info.get("system_total_arrived", 0.0)
             info["phase_switch_rate"] = self._phase_switches / max(1, self._step_count)
             info["min_green_violations"] = self._min_green_violations
-            info["throughput"] = self._total_arrived
             
         return obs, reward, terminated, truncated, info
 
