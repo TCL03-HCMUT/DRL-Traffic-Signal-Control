@@ -3,7 +3,7 @@ benchmark:
   split: VA
   deterministic: true
   episodes_per_scenario: 1
-manifest_path: scenarios/scenario_manifest.csv
+manifest_path: scenarios/pilot_scenario_manifest.csv
 env_config_path: configs/environment/dev_single_intersection.yaml
 checksum_file: scenarios/checksums.sha256
 evaluation_seeds: [101, 102, 103]

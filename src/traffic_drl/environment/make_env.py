@@ -29,6 +29,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Sequence, Callable, Union
 import gymnasium as gym
+from stable_baselines3.common.monitor import Monitor
 from traffic_drl.config import EnvConfig, RewardConfig, load_env_config
 from traffic_drl.environment.wrappers import wrap_environment
 from traffic_drl.environment.custom_observations import MixedTrafficObservation
@@ -253,7 +254,7 @@ def make_dev_environment(
     from traffic_drl.environment.scenario_factory import ScenarioManifest
     
     # Load the DEV-00 manifest record for the smoke test
-    manifest = ScenarioManifest.from_csv("scenarios/scenario_manifest.csv")
+    manifest = ScenarioManifest.from_csv("scenarios/pilot_scenario_manifest.csv")
     record = manifest.get("DEV-00")
 
     env = create_sumo_env(
@@ -338,7 +339,7 @@ def make_vectorized_environment(
         config = load_env_config(config)
 
     def _make_env():
-        return create_sumo_env(
+        env = create_sumo_env(
             config,
             route_file,
             run_id=run_id,
@@ -355,6 +356,8 @@ def make_vectorized_environment(
             vehicle_classes=vehicle_classes,
             **kwargs,
         )
+        env = Monitor(env)
+        return env
 
     env = DummyVecEnv([_make_env])
 

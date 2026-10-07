@@ -6,7 +6,7 @@ experiment:
 
 environment:
   env_config_path: configs/environment/dev_single_intersection.yaml
-  manifest_path: scenarios/scenario_manifest.csv
+  manifest_path: scenarios/pilot_scenario_manifest.csv
 
 reward:
   # Reward function type.
