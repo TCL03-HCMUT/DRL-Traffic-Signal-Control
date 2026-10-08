@@ -23,14 +23,14 @@ normalization:
 model_hyperparameters:
   policy: MlpPolicy
   learning_rate: 0.0003
-  batch_size: 32
+  batch_size: 512
   buffer_size: 1000000
   learning_starts: 1000
   gamma: 0.99
   n_steps: 5
   exploration_fraction: 0.5
-  tau: 0.005
-  target_update_interval: 1
+  tau: 0.01
+  target_update_interval: 2
   verbose: 1
 
 training_control:
