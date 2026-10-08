@@ -65,9 +65,13 @@ model_hyperparameters:
   policy: MlpPolicy
   learning_rate: 0.0001
   batch_size: 32
-  buffer_size: 10000
-  learning_starts: 100
+  buffer_size: 1000000
+  learning_starts: 1000
   gamma: 0.99
+  n_steps: 5
+  exploration_fraction: 0.5
+  tau: 0.005
+  target_update_interval: 1
 
 training_control:
   total_timesteps: 10000
