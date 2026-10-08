@@ -1,7 +1,7 @@
 experiment:
   name: dummy_dqn
   seed: 5
-  device: cpu
+  device: cuda
   split_allowed: TR
 
 environment:
