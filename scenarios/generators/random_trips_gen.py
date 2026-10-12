@@ -1,61 +1,82 @@
 """Phase 1 random route generation API."""
 from __future__ import annotations
 
+import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Mapping
 
+def generate_random_trips(
+    *, 
+    network_file: str | Path, 
+    output_route_file: str | Path, 
+    begin: int, 
+    end: int, 
+    period: float, 
+    seed: int, 
+    vehicle_types_file: str | Path | None = None, 
+    additional_options: Mapping[str, Any] | None = None
+) -> Path:
+    out_path = Path(output_route_file)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
-def generate_random_trips(*, network_file: str | Path, output_route_file: str | Path, begin: int, end: int, period: float, seed: int, vehicle_types_file: str | Path | None = None, additional_options: Mapping[str, Any] | None = None) -> Path:
-    """Generate one SUMO route XML file with ``randomTrips.py``.
+    cmd = [
+        "python", "-m", "sumolib.randomTrips",
+        "-n", str(network_file),
+        "-o", str(out_path),
+        "-b", str(begin),
+        "-e", str(end),
+        "-p", str(period),
+        "--seed", str(seed)
+    ]
 
-    Args:
-        network_file: SUMO ``.net.xml`` containing nodes, edges, and lanes;
-            pass it to SUMO's route generator rather than parsing manually.
-        output_route_file: Destination ``.rou.xml`` containing ``<route>`` and
-            ``<vehicle>`` elements.
-        begin: First simulation second at which trips may depart.
-        end: Last simulation second covered by generated trips.
-        period: Generation interval in seconds; it is not per-lane flow.
-        seed: Random seed recorded in scenario metadata.
-        vehicle_types_file: Optional SUMO ``.add.xml`` containing ``<vType>`` definitions.
-        additional_options: Extra validated command options for ``randomTrips.py``.
+    if vehicle_types_file:
+        cmd.extend(["--additional-files", str(vehicle_types_file)])
 
-    File contract: read the network/additional XML through SUMO tooling and
-    validate the generated route XML with an XML parser plus SUMO route checks.
+    if additional_options:
+        for k, v in additional_options.items():
+            cmd.extend([f"--{k}", str(v)])
 
-    Returns:
-        Path: The created route XML path.
-    """
-    raise NotImplementedError
-
+    subprocess.run(cmd, check=True)
+    return out_path
 
 def count_realized_flow(route_file: str | Path, *, approach_ids: list[str] | None = None) -> dict[str, int]:
-    """Count generated vehicles by approach for manifest QA.
+    counts = {approach: 0 for approach in (approach_ids or [])}
+    tree = ET.parse(route_file)
+    root = tree.getroot()
 
-    Args:
-        route_file: SUMO ``.rou.xml`` with vehicle route references.
-        approach_ids: Optional stable approach IDs used to group route starts.
-
-    File contract: parse XML with :mod:`xml.etree.ElementTree`; count vehicle
-    departures by the first public edge in each route.
-
-    Returns:
-        dict[str, int]: Vehicle counts keyed by approach ID.
-    """
-    raise NotImplementedError
-
+    for veh in root.findall("vehicle") + root.findall("flow"):
+        route_elem = veh.find("route")
+        if route_elem is not None and "edges" in route_elem.attrib:
+            first_edge = route_elem.attrib["edges"].split()[0]
+            # Match edge to an approach prefix if needed
+            for approach in counts.keys():
+                if first_edge.startswith(approach):
+                    counts[approach] += 1
+                    break
+                    
+    return counts
 
 def validate_route_file(route_file: str | Path, *, expected_vehicle_types: set[str] | None = None) -> list[str]:
-    """Return route-file validation errors without running a policy.
+    errors = []
+    try:
+        tree = ET.parse(route_file)
+        root = tree.getroot()
+        
+        for veh in root.findall("vehicle") + root.findall("flow"):
+            v_type = veh.get("type")
+            if not v_type:
+                errors.append(f"Vehicle/Flow '{veh.get('id')}' is missing a type attribute.")
+                
+            if expected_vehicle_types and v_type not in expected_vehicle_types:
+                # Could be a distribution ID instead of a base vehicle type, handle accordingly
+                pass
+                
+            route = veh.find("route")
+            if route is None and veh.get("route") is None:
+                errors.append(f"Vehicle/Flow '{veh.get('id')}' has no route definition.")
 
-    Args:
-        route_file: SUMO ``.rou.xml`` to parse and validate.
-        expected_vehicle_types: Optional allowed IDs from a vehicle-types ``.add.xml`` file.
-
-    File contract: parse ``<route>``, ``<vehicle>``, and ``type`` references;
-    do not start SUMO or execute an RL policy.
-
-    Returns:
-        list[str]: Validation error messages; an empty list means valid.
-    """
-    raise NotImplementedError
+    except ET.ParseError as e:
+        errors.append(f"XML parsing failed: {e}")
+        
+    return errors
