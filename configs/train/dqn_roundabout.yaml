@@ -43,6 +43,7 @@ model_hyperparameters:
   exploration_initial_eps: 1.0
   exploration_final_eps: 0.05
   gamma: 0.99
+  verbose: 1
 
 training_control:
   total_timesteps: 100000
