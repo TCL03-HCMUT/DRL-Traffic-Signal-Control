@@ -74,6 +74,7 @@ class MultiScenarioWrapper(gym.Wrapper):
             
         obs, info = super().reset(seed=seed, options=options)
         info["scenario"] = self.active_scenario
+        info["scenario_id"] = self.active_scenario.scenario_id
         return obs, info
 
     def step(
@@ -85,6 +86,7 @@ class MultiScenarioWrapper(gym.Wrapper):
         obs, reward, terminated, truncated, info = super().step(action)
         if self.active_scenario is not None:
             info["scenario"] = self.active_scenario
+            info["scenario_id"] = self.active_scenario.scenario_id
         return obs, reward, terminated, truncated, info
 
 

@@ -367,7 +367,7 @@ def make_vectorized_environment(
             vehicle_classes=vehicle_classes,
             **kwargs,
         )
-        env = Monitor(env)
+        env = Monitor(env, info_keywords=("scenario_id",))
         return env
 
     env = DummyVecEnv([_make_env])
