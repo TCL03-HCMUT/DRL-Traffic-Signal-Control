@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from collections import deque
 from pathlib import Path
 
 from stable_baselines3.common.callbacks import BaseCallback
@@ -46,6 +47,16 @@ class RobustCheckpointCallback(BaseCallback):
         # Best-metric tracking state
         self._best_reward: float = -math.inf
         self._best_waiting_time: float = math.inf
+        self._episode_rewards: deque[float] = deque(maxlen=100)
+
+    def _init_callback(self) -> None:
+        episode_buffer = getattr(self.model, "ep_info_buffer", None)
+        window_size = getattr(episode_buffer, "maxlen", None)
+        if episode_buffer is not None and window_size is not None:
+            self._episode_rewards = deque(
+                (float(episode["r"]) for episode in episode_buffer if "r" in episode),
+                maxlen=window_size,
+            )
 
     def _get_vec_normalize_env(self):
         """Return the VecNormalize wrapper if applicable, else None."""
@@ -82,22 +93,22 @@ class RobustCheckpointCallback(BaseCallback):
         Uses episode reward mean as the primary metric (higher is better).
         On tie, uses average_waiting_time as a tiebreaker (lower is better).
         """
-        # Read current episode reward from SB3's internal logger
-        # ep_rew_mean is populated after the first episode completes
-        if not hasattr(self.model, "logger") or self.model.logger is None:
-            return
-
-        # SB3 stores name_to_value in the logger's internal dict
-        log_dict = getattr(self.model.logger, "name_to_value", {})
-        current_reward = log_dict.get("rollout/ep_rew_mean")
-        if current_reward is None:
-            return
-
-        # Read waiting time from the most recent info (if available)
-        current_waiting = math.inf
+        completed_episodes = []
+        waiting_times = []
         for info in self.locals.get("infos", []):
+            episode = info.get("episode")
+            if episode is None or "r" not in episode:
+                continue
+            completed_episodes.append(episode)
+            self._episode_rewards.append(float(episode["r"]))
             if "average_waiting_time" in info:
-                current_waiting = info["average_waiting_time"]
+                waiting_times.append(float(info["average_waiting_time"]))
+
+        if not completed_episodes or not self._episode_rewards:
+            return
+
+        current_reward = sum(self._episode_rewards) / len(self._episode_rewards)
+        current_waiting = sum(waiting_times) / len(waiting_times) if waiting_times else math.inf
 
         # Compare: higher reward is better; on tie, lower waiting time wins
         is_better = False
