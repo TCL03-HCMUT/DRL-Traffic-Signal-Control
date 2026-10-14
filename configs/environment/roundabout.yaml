@@ -1,0 +1,44 @@
+network:
+  net_file: sumo/net/official/roundabout.net.xml
+  route_files: []
+  additional_files:
+    - scenarios/sumo_definitions/vtypes.add.xml
+traffic_light:
+  ts_id: "traffic_light"
+  single_agent: true
+  program_id: null
+timing:
+  num_seconds: 3600
+  delta_time: 5
+  min_green: 10
+  max_green: 60
+  yellow_time: 3
+  red_time: 0
+sumo_options:
+  use_gui: false
+  lateral_resolution: 1.2
+  additional_sumo_cmd: "-a scenarios/sumo_definitions/vtypes.add.xml"
+  save_tripinfo: false
+observation_bounds:
+  max_queue_per_lane: 50.0
+  max_time_in_phase: 60.0
+observation_features:
+  approach_ids:
+    - A1_A
+    - A2_A
+    - A3_A
+    - A4_A
+    - A6_A
+  ring_segment_ids:
+    - E13
+    - E16
+    - E46
+    - E24
+    - E25
+    - E35
+  vehicle_classes:
+    - passenger
+    - bus
+    - truck
+    - motorcycle
+    - emergency

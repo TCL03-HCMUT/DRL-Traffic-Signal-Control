@@ -44,13 +44,19 @@ def build_ppo_model(
     """
     from stable_baselines3 import PPO
 
-    kwargs = dict(config.model_hyperparameters)
+    if isinstance(config, dict):
+        kwargs = dict(config.get("model_hyperparameters", config))
+        cfg_seed = config.get("experiment", {}).get("seed", 42) if isinstance(config.get("experiment"), dict) else config.get("seed", 42)
+    else:
+        kwargs = dict(config.model_hyperparameters)
+        cfg_seed = config.experiment.seed
+
     policy = kwargs.pop("policy", "MlpPolicy")
 
     return PPO(
         policy=policy,
         env=env,
-        seed=seed if seed is not None else config.experiment.seed,
+        seed=seed if seed is not None else cfg_seed,
         tensorboard_log=str(tensorboard_log) if tensorboard_log else None,
         **kwargs,
     )

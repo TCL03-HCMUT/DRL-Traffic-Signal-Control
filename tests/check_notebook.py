@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 def check_notebook(notebook_path):
-    print(f"Checking notebook: {notebook_path}")
+    print(f"Checking notebook: {notebook_path.name}")
     try:
         with open(notebook_path, 'r', encoding='utf-8') as f:
             nb = json.load(f)
@@ -26,7 +26,14 @@ def check_notebook(notebook_path):
     for i, cell in enumerate(nb['cells']):
         if cell['cell_type'] != 'code':
             continue
-        source = ''.join(cell['source'])
+        cleaned_lines = []
+        for line in cell.get('source', []):
+            stripped = line.strip()
+            if stripped.startswith('!') or stripped.startswith('%'):
+                cleaned_lines.append(f"# {line}")
+            else:
+                cleaned_lines.append(line)
+        source = ''.join(cleaned_lines)
         if not source.strip():
             continue
         try:

@@ -103,8 +103,8 @@ def build_reward_fn(reward_config: RewardConfig) -> Union[str, Callable]:
 def create_sumo_env(
     config: EnvConfig | str | Path,
     route_file: str | Path,
-    run_id: str,
-    base_dir: Path,
+    run_id: str = "run_default",
+    base_dir: Path | str = Path("outputs/runs"),
     *,
     fixed_ts: bool = False,
     seed: int | None = None,
@@ -172,14 +172,25 @@ def create_sumo_env(
     if not Path(route_file).exists():
         raise FileNotFoundError(f"SUMO route file not found: {route_file}")
 
+    # Load observation topology defaults from config if not explicitly provided
+    if not approach_ids and hasattr(config, "observation_features") and config.observation_features.approach_ids:
+        approach_ids = config.observation_features.approach_ids
+    if not ring_segment_ids and hasattr(config, "observation_features") and config.observation_features.ring_segment_ids:
+        ring_segment_ids = config.observation_features.ring_segment_ids
+    if (not vehicle_classes or tuple(vehicle_classes) == ("passenger", "bus", "truck")) and hasattr(config, "observation_features") and config.observation_features.vehicle_classes:
+        vehicle_classes = config.observation_features.vehicle_classes
+
     additional_cmd = [
         config.sumo_options.additional_sumo_cmd,
         "--lateral-resolution",
         str(config.sumo_options.lateral_resolution),
     ]
 
+    if config.network.additional_files and "-a" not in config.sumo_options.additional_sumo_cmd and "--additional-files" not in config.sumo_options.additional_sumo_cmd:
+        additional_cmd.extend(["-a", ",".join(str(f) for f in config.network.additional_files)])
+
     # Create directories before assigning paths
-    tripinfo_dir, results_dir, _, _ = r_id.ensure_run_directories(run_id, base_dir)
+    tripinfo_dir, results_dir, _, _ = r_id.ensure_run_directories(run_id, Path(base_dir))
 
     if config.sumo_options.save_tripinfo:
         tripinfo_path = tripinfo_dir / "tripinfo.xml"
@@ -189,7 +200,7 @@ def create_sumo_env(
         additional_cmd.append("--emission-output")
         additional_cmd.append(str(emissions_path))
 
-    cmds = " ".join(additional_cmd)
+    cmds = " ".join(part for part in additional_cmd if part)
     
     env_kwargs = dict(
         net_file=config.network.net_file,
@@ -279,8 +290,8 @@ def make_dev_environment(
 def make_vectorized_environment(
     config: EnvConfig | str | Path,
     route_file: str | Path,
-    run_id: str,
-    base_dir: Path,
+    run_id: str = "run_default",
+    base_dir: Path | str = Path("outputs/runs"),
     *,
     fixed_ts: bool = False,
     seed: int | None = None,

@@ -106,6 +106,17 @@ class ObservationBoundsConfig:
 
 
 @dataclass(frozen=True)
+class ObservationFeaturesConfig:
+    """Topology features for custom MDP observation."""
+
+    approach_ids: list[str] = field(default_factory=list)
+    ring_segment_ids: list[str] = field(default_factory=list)
+    vehicle_classes: list[str] = field(
+        default_factory=lambda: ["passenger", "bus", "truck", "motorcycle"]
+    )
+
+
+@dataclass(frozen=True)
 class EnvConfig:
     """Full environment configuration parsed from a YAML file.
 
@@ -135,6 +146,10 @@ class EnvConfig:
         observation_bounds:
           max_queue_per_lane: 10.0
           max_time_in_phase: 60.0
+        observation_features:
+          approach_ids: ["A1_A", "A2_A", "A3_A", "A4_A", "A6_A"]
+          ring_segment_ids: ["E13", "E16", "E46", "E24", "E25", "E35"]
+          vehicle_classes: ["passenger", "bus", "truck", "motorcycle"]
     """
 
     network: NetworkConfig
@@ -142,6 +157,9 @@ class EnvConfig:
     timing: TimingConfig
     sumo_options: SumoOptions
     observation_bounds: ObservationBoundsConfig
+    observation_features: ObservationFeaturesConfig = field(
+        default_factory=ObservationFeaturesConfig
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +362,19 @@ def load_env_config(
         observation_bounds=ObservationBoundsConfig(
             max_queue_per_lane=float(obs["max_queue_per_lane"]),
             max_time_in_phase=float(obs["max_time_in_phase"]),
+        ),
+        observation_features=ObservationFeaturesConfig(
+            approach_ids=list(
+                (raw.get("observation_features") or raw.get("observation") or {}).get("approach_ids", [])
+            ),
+            ring_segment_ids=list(
+                (raw.get("observation_features") or raw.get("observation") or {}).get("ring_segment_ids", [])
+            ),
+            vehicle_classes=list(
+                (raw.get("observation_features") or raw.get("observation") or {}).get(
+                    "vehicle_classes", ["passenger", "bus", "truck", "motorcycle"]
+                )
+            ),
         ),
     )
 

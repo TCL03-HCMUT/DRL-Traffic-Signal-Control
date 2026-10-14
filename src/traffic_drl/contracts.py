@@ -102,6 +102,28 @@ class EpisodeMetrics:
 
 
 @dataclass(frozen=True)
+class StepMetrics:
+    """Traffic metrics captured at a single simulation time step.
+
+    Used for detailed time-series inspection of queue dissipation, delay
+    accumulation, and agent action evolution across simulation seconds.
+    """
+
+    step: float
+    controller: str
+    scenario_id: str
+    seed: int
+    episode: int
+    queue_length: float
+    waiting_time: float
+    accumulated_waiting_time: float
+    mean_speed: float
+    reward: float
+    cumulative_reward: float
+    action: int | None = None
+
+
+@dataclass(frozen=True)
 class MetricSummary:
     """Aggregated metric values for one controller/scenario group.
 

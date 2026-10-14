@@ -58,7 +58,7 @@ def test_make_env():
     # Create a base environment
     env = create_sumo_env(
         config="configs/environment/dev_single_intersection.yaml",
-        route_file="scenarios/train/tr_01.rou.xml",  # This file doesn't exist, but we're using a dummy implementation
+        route_file="scenarios/dummy/single-intersection-vhvh.rou.xml",
         seed=42
     )
     print(f"  Created environment: {type(env)}")
