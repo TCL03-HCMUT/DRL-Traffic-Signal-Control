@@ -18,11 +18,11 @@ from ..config import TrainConfig, load_train_config
 if TYPE_CHECKING:
     from stable_baselines3 import PPO
     from stable_baselines3.common.callbacks import BaseCallback
-    from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+    from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
 
 def build_ppo_model(
-    env: "DummyVecEnv | VecNormalize",
+    env: "DummyVecEnv | SubprocVecEnv | VecNormalize",
     config: TrainConfig,
     *,
     seed: int | None = None,
@@ -108,11 +108,12 @@ def save_ppo_checkpoint(
 def load_ppo_checkpoint(
     bundle_dir: str | Path,
     *,
-    env: "DummyVecEnv | VecNormalize | None" = None,
+    env: "DummyVecEnv | SubprocVecEnv | VecNormalize | None" = None,
     training: bool = True,
+    norm_reward: bool | None = None,
     restore_rng_state: bool = True,
 ) -> "PPO":
-    """Load a PPO checkpoint with auto-detected VecNormalize."""
+    """Load a PPO checkpoint, preserving saved VecNormalize settings by default."""
     from stable_baselines3 import PPO as _PPO
 
     return load_checkpoint(
@@ -120,6 +121,7 @@ def load_ppo_checkpoint(
         bundle_dir,
         env=env,
         training=training,
+        norm_reward=norm_reward,
         restore_rng_state=restore_rng_state,
     )
 

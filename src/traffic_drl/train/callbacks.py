@@ -154,7 +154,7 @@ class TrafficMetricsCallback(BaseCallback):
             if "episode" in info and "scenario_id" in info:
                 self.logger.record("scenario/id", str(info["scenario_id"]))
 
-            for metric in ("average_waiting_time", "average_queue_length", "time_loss", "throughput", "phase_switch_rate", "min_green_violations"):
+            for metric in ("average_waiting_time", "average_queue_length", "throughput", "phase_switch_rate", "min_green_violations"):
                 if metric in info:
                     self.logger.record(f"traffic/{metric}", info[metric])
         return True

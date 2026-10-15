@@ -42,9 +42,13 @@ from traffic_drl.environment.all_red_env import AllRedSumoEnvironment
 # module can be imported even when stable-baselines3 is not installed.
 # At runtime the real types are resolved inside the functions that use them.
 try:
-    from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize  # type: ignore[import]
+    from stable_baselines3.common.vec_env import (  # type: ignore[import]
+        DummyVecEnv,
+        SubprocVecEnv,
+        VecNormalize,
+    )
 
-    VecEnv = DummyVecEnv | VecNormalize
+    VecEnv = DummyVecEnv | SubprocVecEnv | VecNormalize
 except ModuleNotFoundError:
     VecEnv = None  # type: ignore[assignment,misc]
 
@@ -305,13 +309,15 @@ def make_vectorized_environment(
     norm_reward: bool = True,
     clip_obs: float = 10.0,
     clip_reward: float = 10.0,
+    n_envs: int = 1,
+    start_method: str | None = None,
     approach_ids: Sequence[str] = (),
     ring_segment_ids: Sequence[str] = (),
     vehicle_classes: Sequence[str] = ("passenger", "bus", "truck"),
     vec_normalize: str | Path | None = None,
     **kwargs,
-) -> "DummyVecEnv | VecNormalize":
-    """Create a ``DummyVecEnv`` and optional ``VecNormalize`` wrapper for SB3.
+) -> "DummyVecEnv | SubprocVecEnv | VecNormalize":
+    """Create an SB3 vector environment and optional ``VecNormalize`` wrapper.
 
     The returned object is the ``env`` argument accepted by
     :func:`~traffic_drl.train.train_dqn.build_dqn_model`.
@@ -333,6 +339,8 @@ def make_vectorized_environment(
         norm_reward: Wrap with ``VecNormalize`` and normalise rewards.
         clip_obs: Maximum absolute value for normalised observations.
         clip_reward: Maximum absolute value for normalised rewards.
+        n_envs: Number of environments; values above one use ``SubprocVecEnv``.
+        start_method: Multiprocessing start method for ``SubprocVecEnv``.
         approach_ids: Incoming edge IDs passed to the custom observation space.
         ring_segment_ids: Ring edges passed to the custom observation space.
         vehicle_classes: Vehicle classes to track in custom observations.
@@ -343,25 +351,38 @@ def make_vectorized_environment(
     (``training=False``, ``norm_reward=False``) for ``VA``/``TE`` evaluation.
 
     Returns:
-        DummyVecEnv | VecNormalize: A single-environment vectorised wrapper,
-        optionally wrapped by ``VecNormalize``.
+        A vectorised environment, optionally wrapped by ``VecNormalize``.
     """
     if isinstance(config, (str, Path)):
         config = load_env_config(config)
 
-    def _make_env():
+    if n_envs < 1:
+        raise ValueError("n_envs must be at least 1")
+
+    def _make_env(rank: int) -> gym.Env:
+        worker_sampler = scenario_sampler
+        if n_envs > 1 and scenario_sampler is not None:
+            sampler_seed = (
+                scenario_sampler.seed if scenario_sampler.seed is not None else seed
+            )
+            worker_sampler = ScenarioSampler(
+                manifest=scenario_sampler.manifest,
+                allowed_split=scenario_sampler.allowed_split,
+                seed=None if sampler_seed is None else sampler_seed + rank,
+            )
+
         env = create_sumo_env(
             config,
             route_file,
-            run_id=run_id,
+            run_id=f"{run_id}_worker_{rank}" if n_envs > 1 else run_id,
             base_dir=base_dir,
             fixed_ts=fixed_ts,
             use_gui=use_gui,
             reward_fn=reward_fn,
             wrap=wrap,
-            scenario_sampler=scenario_sampler,
+            scenario_sampler=worker_sampler,
             custom_observation=custom_observation,
-            seed=seed,
+            seed=None if seed is None else seed + rank,
             approach_ids=approach_ids,
             ring_segment_ids=ring_segment_ids,
             vehicle_classes=vehicle_classes,
@@ -370,7 +391,19 @@ def make_vectorized_environment(
         env = Monitor(env, info_keywords=("scenario_id",))
         return env
 
-    env = DummyVecEnv([_make_env])
+    def _make_env_factory(rank: int) -> Callable[[], gym.Env]:
+        def _init() -> gym.Env:
+            return _make_env(rank)
+
+        return _init
+
+    env_fns: list[Callable[[], gym.Env]] = [
+        _make_env_factory(rank) for rank in range(n_envs)
+    ]
+    if n_envs == 1:
+        env = DummyVecEnv(env_fns)
+    else:
+        env = SubprocVecEnv(env_fns, start_method=start_method)
 
 
     if vec_normalize is not None:

@@ -183,7 +183,7 @@ def load_checkpoint(
     *,
     env: "object | None" = None,
     training: bool = True,
-    norm_reward: bool = False,
+    norm_reward: bool | None = None,
     restore_replay_buffer: bool = True,
     restore_rng_state: bool = True,
 ) -> "_SB3ModelT":
@@ -199,7 +199,8 @@ def load_checkpoint(
             the bundle contains ``vec_normalize.pkl``.
         training: Keep normalisation statistics updating when ``True`` (for
             resumed training); ``False`` for evaluation.
-        norm_reward: Restore reward normalisation mode.
+        norm_reward: Optional reward-normalisation override. If ``None``, keep
+            the mode saved in the ``VecNormalize`` checkpoint.
         restore_replay_buffer: If True and a replay buffer exists in the
             bundle, load it into the model.
         restore_rng_state: If True and an RNG state file exists in the
@@ -222,7 +223,8 @@ def load_checkpoint(
 
         load_env = VecNormalize.load(str(bundle.vec_normalize_path), env)
         load_env.training = training
-        load_env.norm_reward = norm_reward
+        if norm_reward is not None:
+            load_env.norm_reward = norm_reward
 
     loaded_model = model_class.load(str(bundle.model_path), env=load_env)
 

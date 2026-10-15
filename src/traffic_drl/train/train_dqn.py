@@ -30,11 +30,11 @@ from ..config import TrainConfig, load_train_config
 if TYPE_CHECKING:
     from stable_baselines3 import DQN
     from stable_baselines3.common.callbacks import BaseCallback
-    from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+    from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
 
 def build_dqn_model(
-    env: "DummyVecEnv | VecNormalize",
+    env: "DummyVecEnv | SubprocVecEnv | VecNormalize",
     config: TrainConfig,
     *,
     seed: int | None = None,
@@ -98,11 +98,12 @@ def save_dqn_checkpoint(
 def load_dqn_checkpoint(
     bundle_dir: str | Path,
     *,
-    env: "DummyVecEnv | VecNormalize | None" = None,
+    env: "DummyVecEnv | SubprocVecEnv | VecNormalize | None" = None,
     training: bool = True,
+    norm_reward: bool | None = None,
     restore_rng_state: bool = True,
 ) -> "DQN":
-    """Load a DQN checkpoint with auto-detected replay buffer and VecNormalize."""
+    """Load a DQN checkpoint, preserving saved VecNormalize settings by default."""
     from stable_baselines3 import DQN as _DQN
 
     return load_checkpoint(
@@ -110,6 +111,7 @@ def load_dqn_checkpoint(
         bundle_dir,
         env=env,
         training=training,
+        norm_reward=norm_reward,
         restore_rng_state=restore_rng_state,
     )
 
