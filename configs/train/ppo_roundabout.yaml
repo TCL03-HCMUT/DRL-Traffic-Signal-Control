@@ -44,6 +44,6 @@ model_hyperparameters:
 
 training_control:
   total_timesteps: 100000
-  save_freq: 5000
+  save_freq: 1440
   eval_freq: 0
   log_csv: true

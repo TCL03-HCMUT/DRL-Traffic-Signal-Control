@@ -57,6 +57,12 @@ def test_subproc_vec_env_samples_only_allowed_split(tmp_path: Path):
         assert sampled_ids <= {"train-a", "train-b"}
         assert "validation-only" not in sampled_ids
 
+        test_actions = [0] * normalized_env.num_envs
+        _, test_rewards, test_dones, test_infos = normalized_env.step(test_actions)
+        assert test_rewards.shape == (2,)
+        assert test_dones.shape == (2,)
+        assert len(test_infos) == 2
+
         model = build_dqn_model(
             cast(Any, normalized_env),
             cast(

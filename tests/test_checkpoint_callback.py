@@ -8,7 +8,7 @@ import numpy as np
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from traffic_drl.train.callbacks import RobustCheckpointCallback
+from traffic_drl.train.callbacks import RobustCheckpointCallback, TrafficMetricsCallback
 from traffic_drl.train.train_dqn import build_dqn_model, train_dqn
 
 
@@ -64,6 +64,45 @@ def test_best_checkpoint_uses_completed_episode_when_logger_is_empty():
     assert saved == ["best", "best"]
     assert callback._best_reward == 5.0
     assert callback._best_waiting_time == 2.0
+
+
+def test_traffic_metrics_callback_averages_worker_metrics():
+    records = {}
+    callback = TrafficMetricsCallback()
+    callback.model = cast(Any, SimpleNamespace(
+        logger=SimpleNamespace(record=lambda key, value: records.update({key: value}))
+    ))
+    callback.locals = {
+        "infos": [
+            {
+                "episode": {"r": 2.0},
+                "scenario_id": "train-a",
+                "average_waiting_time": 4.0,
+                "average_queue_length": 2.0,
+                "throughput": 10,
+                "phase_switch_rate": 0.2,
+                "min_green_violations": 2,
+            },
+            {
+                "episode": {"r": 3.0},
+                "scenario_id": "train-b",
+                "average_waiting_time": 8.0,
+                "average_queue_length": 6.0,
+                "throughput": 20,
+                "phase_switch_rate": 0.4,
+                "min_green_violations": 4,
+            },
+        ]
+    }
+
+    assert callback._on_step()
+    assert records["traffic/average_waiting_time"] == 6.0
+    assert records["traffic/average_queue_length"] == 4.0
+    assert records["traffic/throughput"] == 15.0
+    assert np.isclose(records["traffic/phase_switch_rate"], 0.3)
+    assert records["traffic/min_green_violations"] == 3.0
+    assert records["scenario/id/env_0"] == "train-a"
+    assert records["scenario/id/env_1"] == "train-b"
 
 
 def test_dqn_training_writes_best_and_last_checkpoint_bundles(tmp_path):

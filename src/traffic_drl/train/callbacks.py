@@ -142,19 +142,29 @@ class RobustCheckpointCallback(BaseCallback):
 
 
 class TrafficMetricsCallback(BaseCallback):
-    """Copy episode traffic metrics from ``info`` into SB3's logger."""
+    """Aggregate episode traffic metrics from all vector envs into SB3's logger."""
 
     def _on_step(self) -> bool:
-        """Log waiting, queue, timeLoss, throughput and control metrics.
+        """Log the mean of each metric reported by workers on this vector step.
 
         Returns:
             bool: ``True`` to continue training; ``False`` to stop training.
         """
-        for info in self.locals.get("infos", []):
+        infos = self.locals.get("infos", [])
+        for worker_index, info in enumerate(infos):
             if "episode" in info and "scenario_id" in info:
-                self.logger.record("scenario/id", str(info["scenario_id"]))
+                tag = "scenario/id" if len(infos) == 1 else f"scenario/id/env_{worker_index}"
+                self.logger.record(tag, str(info["scenario_id"]))
 
-            for metric in ("average_waiting_time", "average_queue_length", "throughput", "phase_switch_rate", "min_green_violations"):
-                if metric in info:
-                    self.logger.record(f"traffic/{metric}", info[metric])
+        metrics = (
+            "average_waiting_time",
+            "average_queue_length",
+            "throughput",
+            "phase_switch_rate",
+            "min_green_violations",
+        )
+        for metric in metrics:
+            values = [float(info[metric]) for info in infos if metric in info]
+            if values:
+                self.logger.record(f"traffic/{metric}", math.fsum(values) / len(values))
         return True
