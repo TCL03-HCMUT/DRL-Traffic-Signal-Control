@@ -13,7 +13,7 @@ reward:
   type: combined
   params:
     wait_weight: 1.5
-    queue_weight: 2.0
+    queue_weight: 1.5
     flicker_weight: 1.0
     lambda_f: 0.99
     delta_time: 5
@@ -25,8 +25,8 @@ reward:
 
 normalization:
   norm_obs: true
-  norm_reward: true
-  clip_obs: 1.0
+  norm_reward: false
+  clip_obs: 10.0
   clip_reward: 10.0
   gamma: 0.99
 
@@ -34,7 +34,7 @@ model_hyperparameters:
   policy: MlpPolicy
   learning_rate: 0.0003
   batch_size: 64
-  buffer_size: 50000
+  buffer_size: 100000
   learning_starts: 1440
   train_freq: 4
   tau: 0.005
