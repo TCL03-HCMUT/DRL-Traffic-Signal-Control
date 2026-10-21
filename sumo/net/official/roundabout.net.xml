@@ -197,12 +197,12 @@
     </edge>
 
     <tlLogic id="traffic_light" type="static" programID="0" offset="0">
-        <phase duration="27" state="rrGGGGrrGG"/>
-        <phase duration="3"  state="rryyGGrryy"/>
-        <phase duration="27" state="rrrrGGGGrr"/>
-        <phase duration="3"  state="rrrryyyyrr"/>
-        <phase duration="27" state="GGGGrrrrrr"/>
-        <phase duration="3"  state="yyGGrrrrrr"/>
+        <phase duration="2"  state="rrrrrrrrrr"/>
+        <phase duration="55" state="ggggrrrrrr"/>
+        <phase duration="3"  state="yyyyrrrrrr"/>
+        <phase duration="2"  state="rrrrrrrrrr"/>
+        <phase duration="35" state="rrrrgggggg"/>
+        <phase duration="3"  state="rrrryyyyyy"/>
     </tlLogic>
 
     <junction id="-26234" type="dead_end" x="0.18" y="322.31" incLanes="" intLanes="" shape="0.38,327.31 -0.02,317.31"/>
