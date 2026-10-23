@@ -14,7 +14,7 @@ reward:
   params:
     wait_weight: 1.5
     queue_weight: 1.5
-    flicker_weight: 1.0
+    flicker_weight: 0.0
     lambda_f: 0.99
     delta_time: 5
     v_stall: 0.1
