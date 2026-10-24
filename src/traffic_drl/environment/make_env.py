@@ -217,6 +217,7 @@ def create_sumo_env(
         delta_time=config.timing.delta_time,
         yellow_time=config.timing.yellow_time,
         red_time=config.timing.red_time,
+        enforce_max_green=config.timing.enforce_max_green,
         sumo_seed=seed if seed is not None else "random",
         fixed_ts=fixed_ts,
         reward_fn=reward_fn,

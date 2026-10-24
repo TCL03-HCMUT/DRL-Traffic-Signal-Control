@@ -85,6 +85,7 @@ class TimingConfig:
     max_green: int
     yellow_time: int
     red_time: int
+    enforce_max_green: bool = True
 
 
 @dataclass(frozen=True)
@@ -352,6 +353,7 @@ def load_env_config(
             max_green=int(timing["max_green"]),
             yellow_time=int(timing["yellow_time"]),
             red_time=int(timing.get("red_time", 0)),
+            enforce_max_green=bool(timing.get("enforce_max_green", True)),
         ),
         sumo_options=SumoOptions(
             use_gui=bool(sumo["use_gui"]),

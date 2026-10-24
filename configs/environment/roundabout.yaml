@@ -12,6 +12,7 @@ timing:
   delta_time: 5
   min_green: 10
   max_green: 60
+  enforce_max_green: false
   yellow_time: 3
   red_time: 0
 sumo_options:
